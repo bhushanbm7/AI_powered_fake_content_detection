@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyberflux - Deepfake Detector</title>
+  <link rel="stylesheet" href="{{ url_for(filename='styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="logo-container">
+        <img src="{{ url_for( filename='logo.jpg') }}" alt="Cyberflux Logo" class="navbar-logo-img">
+        <a href="#" class="navbar-logo">Cyberflux</a>
+      </div>
+      <ul class="navbar-menu">
+        <li><a href="#" id="tab-image" class="navbar-link active" onclick="setActiveTab('image')">Image</a></li>
+        <li><a href="#" id="tab-text" class="navbar-link" onclick="setActiveTab('text')">Text</a></li>
+        <li><a href="#" id="tab-video" class="navbar-link" onclick="setActiveTab('video')">Video</a></li>
+        <li><a href="#" class="navbar-link" onclick="showAboutUs()">About Us</a></li>
+        <li><a href="#" class="navbar-link" onclick="showHelp()">Help</a></li>
+        <li>
+          <div class="dark-mode-toggle">
+            <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+            <label for="darkModeToggle" class="toggle-label">
+              <i class="fas fa-moon"></i>
+              <i class="fas fa-sun"></i>
+              <span class="toggle-ball"></span>
+            </label>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <br>
+
+  <div class="container">
+    <header>
+      <h1>Cyberflux</h1>
+      <p class="tagline">Advanced Deepfake Detection Platform</p>
+    </header>
+
+    <nav class="content-type">
+      <button id="btn-image" class="active" onclick="setActiveTab('image')">
+        <span class="button-icon">🖼️</span> Image
+      </button>
+      <button id="btn-text" onclick="setActiveTab('text')">
+        <span class="button-icon">📝</span> Text
+      </button>
+      <button id="btn-video" onclick="setActiveTab('video')">
+        <span class="button-icon">🎥</span> Video
+      </button>
+    </nav>
+    
+
+    <main>
+      <!-- Image Upload Section -->
+      <div class="upload-section" id="imageUploadSection">
+        <div class="drop-zone" id="dropZone">
+          <p>Drag & Drop Image Here</p>
+          <p>or</p>
+          <button class="browse-button" onclick="triggerFileInput('image')">
+            <span class="button-icon">📁</span> Browse Files
+          </button>
+        </div>
+        <input type="file" id="fileUploadImage" accept="image/*" class="file-input">
+        <button id="scanImageBtn" class="scan-button" onclick="scanImage()" style="display:none;">
+          <span class="button-icon">🔍</span> Analyze Image
+        </button>
+      </div>
+
+      <!-- Text Input Section -->
+      <div class="upload-section" id="textUploadSection" style="display:none;">
+        <textarea id="newsText" placeholder="Paste news article or text snippet here..."></textarea><br>
+        <div class="button-container">
+          <button class="check-btn" onclick="checkFakeNews()">
+            <span class="button-icon">🧐</span> Analyze Text
+          </button>
+          <button class="clear-btn" onclick="clearText()">
+            <span class="button-icon">🗑️</span> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Upload Section -->
+      <div class="upload-section" id="videoUploadSection" style="display:none;">
+        <div class="drop-zone" id="dropZoneVideo">
+          <p>Drag & Drop Video Here</p>
+          <p>or</p>
+          <button class="browse-button" onclick="triggerFileInput('video')">
+            <span class="button-icon">📁</span> Browse Files
+          </button>
+        </div>
+        <input type="file" id="fileUploadVideo" accept="video/*" class="file-input">
+        <button id="scanVideoBtn" class="scan-button" onclick="scanVideo()" style="display:none;">
+          <span class="button-icon">🔍</span> Analyze Video
+        </button>
+        <div id="videoProgress" style="display:none;">
+          <div class="progress-container">
+            <p>Processing: <span id="videoProgressText">0%</span></p>
+            <div class="progress-bar">
+              <div id="videoProgressBar" class="progress-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Sections -->
+      <div id="result" class="result-section"></div>
+      <div id="imageAnalysisContainer" class="analysis-container" style="display:none;"></div>
+      <div id="videoAnalysisContainer" class="analysis-container" style="display:none;"></div>
+
+      <!-- Graph Sections -->
+      <div id="imageGraphSection" class="graph-section" style="display:none;">
+        <button class="close-graph-button" onclick="closeGraph('imageGraphSection')">×</button>
+        <canvas id="imageConfidenceChart"></canvas>
+      </div>
+      <div id="videoGraphSection" class="graph-section" style="display:none;">
+        <button class="close-graph-button" onclick="closeGraph('videoGraphSection')">×</button>
+        <canvas id="videoConfidenceChart"></canvas>
+      </div>
+      <div id="textGraphSection" class="graph-section" style="display:none;">
+        <button class="close-graph-button" onclick="closeGraph('textGraphSection')">×</button>
+        <canvas id="textConfidenceChart"></canvas>
+      </div>
+
+      <div class="graph-buttons">
+        <button id="showImageGraphBtn" class="show-graph-button" style="display:none;" onclick="showGraph('image')">
+          <span class="button-icon">📊</span> Show Detailed Analysis
+        </button>
+        <button id="showVideoGraphBtn" class="show-graph-button" style="display:none;" onclick="showGraph('video')">
+          <span class="button-icon">📊</span> Show Detailed Analysis
+        </button>
+        <button id="showTextGraphBtn" class="show-graph-button" style="display:none;" onclick="showGraph('text')">
+          <span class="button-icon">📊</span> Show Detailed Analysis
+        </button>
+      </div>
+    </main>
+
+    
+
+    <button id="backToTopBtn" class="back-to-top-button" onclick="scrollToTop()">↑</button>
+  </div>
+
+  <!-- Modals -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeModal('aboutModal')">×</span>
+      <h2>About Cyberflux</h2>
+      <p>Cyberflux is an advanced AI platform specializing in digital media authentication and deepfake detection.</p>
+      <p>Our technology combines multiple forensic techniques to provide accurate authenticity assessments for images, videos, and text content.</p>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeModal('helpModal')">×</span>
+      <h2>Help & Support</h2>
+      <h3>How to use Cyberflux:</h3>
+      <ol>
+        <li>Select content type (Image, Video, or Text)</li>
+        <li>Upload your file or paste text</li>
+        <li>View detailed authenticity analysis</li>
+        <li>Explore visual breakdowns and confidence metrics</li>
+      </ol>
+      <p>For technical support: <a href="mailto:support@cyberflux.com">bhushanmehar225@gmail.com</a></p>
+    </div>
+  </div>
+  <section class="additional-content">
+    <div class="info-section">
+      <h2>How It Works</h2>
+      <p>
+        Cyberflux uses advanced machine learning algorithms to detect deepfake content in images, videos, and text. 
+        Simply upload your file, and our system will analyze it to determine its authenticity.
+      </p>
+      
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>Image Analysis</h3>
+          <p>Detects manipulated faces and AI-generated images with forensic analysis of pixels and metadata.</p>
+        </div>
+        <div class="info-card">
+          <h3>Video Detection</h3>
+          <p>Identifies deepfake videos by analyzing facial movements, inconsistencies, and compression artifacts.</p>
+        </div>
+        <div class="info-card">
+          <h3>Text Verification</h3>
+          <p>Flags AI-generated text and manipulated news articles using linguistic pattern analysis.</p>
+        </div>
+      </div>
+
+      <h2>Why Choose Cyberflux?</h2>
+      <ul class="feature-list">
+        <li>✅ High accuracy in detecting deepfakes </li>
+        <li>⚡ Fast analysis (typically under 10 seconds)</li>
+        <li>🖥️ Intuitive, user-friendly interface</li>
+        <li>📁 Supports multiple file formats</li>
+        <li>🔒 Secure processing (files deleted after analysis)</li>
+      </ul>
+
+      <h2>FAQs</h2>
+      <div class="faq-item">
+        <h3>What types of files can I upload?</h3>
+        <p>We support JPG, PNG images; MP4, AVI, MOV videos; and TXT files up to 100MB.</p>
+      </div>
+      <div class="faq-item">
+        <h3>How long does analysis take?</h3>
+        <p>Most analyses complete in 5-15 seconds depending on file size and server load.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is my data secure?</h3>
+        <p>Yes! Files are processed temporarily and permanently deleted after analysis.</p>
+      </div>
+    </div>
+  </section>
+  <!-- Feedback Modal -->
+<div id="feedbackModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeModal('feedbackModal')">×</span>
+    <h2>Feedback Form</h2>
+    <form id="feedbackForm">
+      <div class="form-group">
+        <label for="feedbackName">Name (optional)</label>
+        <input type="text" id="feedbackName" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label for="feedbackEmail">Email (optional)</label>
+        <input type="email" id="feedbackEmail" placeholder="Your email">
+      </div>
+      <div class="form-group">
+        <label for="feedbackRating">How would you rate your experience?</label>
+        <div class="rating-container">
+          <div class="rating-stars">
+            <i class="fas fa-star" data-rating="1"></i>
+            <i class="fas fa-star" data-rating="2"></i>
+            <i class="fas fa-star" data-rating="3"></i>
+            <i class="fas fa-star" data-rating="4"></i>
+            <i class="fas fa-star" data-rating="5"></i>
+          </div>
+          <input type="hidden" id="feedbackRating" value="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="feedbackMessage">Your Feedback</label>
+        <textarea id="feedbackMessage" placeholder="Please share your feedback..." required></textarea>
+      </div>
+      <button type="submit" class="submit-feedback-btn">Submit Feedback</button>
+    </form>
+  </div>
+</div>
+
+<!-- Feedback Button -->
+<button id="feedbackBtn" class="feedback-button" onclick="showFeedbackModal()">
+  <i class="fas fa-comment-alt"></i> Feedback
+</button>
+
+  <footer>
+    <p>&copy; 2025 Cyberflux Technologies. All rights reserved.</p>
+  </footer>
+  <br>
+  <br>
+  <script src="{{ url_for('static', filename='server.js') }}"></script>
+</body>
+</html>
